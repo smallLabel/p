@@ -2,7 +2,7 @@
 Author: lijunhong
 Date: 2022-03-19 12:54:26
 Email: lijunhong@fengmap.com
-LastEditTime: 2022-03-20 13:30:37
+LastEditTime: 2022-03-20 14:07:02
 LastEditors: lijunhong
 LastEditorsEmail: lijunhong@fengmap.com
 Description: 
@@ -12,24 +12,33 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 import json
 import os
+import logging
 
 
 path ='./html'
 html_list = os.listdir(path)
+# print(type(sorted(html_list)))
 
 output = []
-output_list = [['标题', '专利号', '发明人', '权利人', '被引频次']]
+output_list = [['标题', '专利号', '发明人', '权利人','年份', '被引频次']]
 
-for html_file in html_list:
+for html_file in sorted(html_list):
     html_path = path + '/' + html_file
     if not html_path.endswith('html'):
         continue
+    print('正在处理文件：',html_file)
+    print('--------------------')
     soup = BeautifulSoup(open(html_path), 'lxml')
     soup_list = soup.find_all('div', class_='summary-record')
     index = 0
+    if not len(soup_list) == 50:
+        print(html_path, len(soup_list))
+    
     for item in soup_list: 
         obj = {}
         for child in item.descendants:
+            if isinstance(child, Tag) and child.has_attr('id') and child['id'] == 'Summary-pan' and child.name == 'span':
+                obj['Summary-pan'] = child.string[:4]  
             if isinstance(child, Tag) and child.name == 'app-summary-authors':
                 assignee_str = 'SumAuthTa-' + str(index) + '-MainDiv-assignee-en'
                 author_str = 'SumAuthTa-' + str(index) + '-MainDiv-inventor-en'
@@ -53,7 +62,7 @@ for html_file in html_list:
             if isinstance(child, Tag) and child.has_attr('class'):
                 # 施引专利
                 if child['class'][0] == 'stat-number':
-                    obj['statNumber'] = child.string
+                    obj['statNumber'] = child.string.strip().replace(',', '')
                 # title
                 if child['class'][0] == 'title' and child.name == 'a':
                     obj['title'] = child.string
@@ -64,8 +73,7 @@ for html_file in html_list:
                         if isinstance(span, Tag) and span.has_attr('class') and span.name == 'span' and span['class'][0] == 'value-wrap':
                             patent.append(span.string)
                     obj['patent'] = patent            
-                if child.has_attr('id') and child['id'] == 'Summary-pan' and child.name == 'span':
-                    obj['Summary-pan'] = child.string     
+                   
         output.append(obj)
         obj_list = []
         for key,value in obj.items():
@@ -74,6 +82,8 @@ for html_file in html_list:
             obj_list.append(value)
         output_list.append(obj_list)
         # print(output_list)
+    print('处理完成：',html_file)
+    print('--------------------')
 
 
 
